@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mongolia Volunteer Trip 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS for Custom Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --surface-color: #161b22;
+            --primary: #f78166;
+            --secondary: #3fb950;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.6;
+            /* Prevents map tiles from showing up blank on print */
+            -webkit-print-color-adjust: exact;
+        }
+        .slide {
+            width: 1920px; height: 1080px; padding: 80px 120px; page-break-after: always; position: relative;
+            background: radial-gradient(circle at 100% 0%, #1f2937 0%, var(--bg-color) 50%);
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        h1, h2, h3, .day-header { font-family: 'Outfit', sans-serif; font-weight: 800; }
+        
+        .title-slide h1 { font-size: 100px; color: #ffffff; margin-bottom: 30px; background: -webkit-linear-gradient(45deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .title-slide h2 { font-size: 50px; color: var(--text-muted); font-weight: 400; }
+        
+        .section-title { font-size: 70px; color: #ffffff; margin-bottom: 60px; border-bottom: 4px solid var(--primary); padding-bottom: 20px; display: inline-block; }
+        
+        .card { background-color: var(--surface-color); border-radius: 24px; padding: 50px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); }
+        
+        ul { list-style: none; padding-left: 20px; }
+        li { font-size: 28px; margin-bottom: 25px; display: flex; align-items: flex-start; }
+        li::before { content: "•"; color: var(--primary); font-size: 50px; margin-right: 20px; line-height: 28px; }
+        
+        .sub-text { font-size: 24px; color: var(--text-muted); margin-top: -15px; margin-bottom: 30px; margin-left: 45px; }
+
+        /* WIREFRAME 1: Schedule Layout (Left: Day + List, Right: Map) */
+        .layout-schedule {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            height: 800px;
+        }
+        .layout-schedule .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .layout-schedule .day-box {
+            background-color: var(--surface-color);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.05);
+            font-size: 55px;
+            color: var(--accent);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .layout-schedule .list-box {
+            background-color: var(--surface-color);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.05);
+            flex-grow: 1;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .layout-schedule .map-box {
+            background-color: var(--surface-color);
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        /* WIREFRAME 2: Gallery Layout (Top: Place name, Bottom: 3 pictures) */
+        .layout-gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            height: 800px;
+        }
+        .layout-gallery .place-name {
+            background-color: var(--surface-color);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.05);
+            font-size: 60px;
+            color: var(--accent);
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .layout-gallery .pictures-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 40px;
+            flex-grow: 1;
+        }
+        .layout-gallery .pic {
+            background-color: #333;
+            border-radius: 24px;
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        
+        .highlight { color: var(--secondary); font-weight: 700; font-size: 40px; margin-bottom: 20px; display: block; }
+
+        /* Custom Map Tooltip Styling */
+        .leaflet-tooltip.custom-map-label {
+            background-color: var(--surface-color);
+            border: 2px solid var(--primary);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .leaflet-tooltip-top.custom-map-label::before { border-top-color: var(--primary); }
+        .leaflet-tooltip-bottom.custom-map-label::before { border-bottom-color: var(--primary); }
+        .leaflet-tooltip-left.custom-map-label::before { border-left-color: var(--primary); }
+        .leaflet-tooltip-right.custom-map-label::before { border-right-color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1 -->
+    <div class="slide title-slide">
+        <h1>2026 Run for Love <br>Volunteer Trip: Mongolia</h1>
+        <h2>September 14 – 18, 2026 <br>Proposed Itinerary & Logistics</h2>
+    </div>
+
+    <!-- Slide 2: Budget -->
+    <div class="slide">
+        <h2 class="section-title">Budget & Local Costs<br><span style="font-size:32px; color:#a3b1c6;">預算與當地費用</span></h2>
+        <div class="card" style="height: 800px;">
+            <span class="highlight">Estimated Local Budget (per person): ~670,000 MNT (~6,030 TWD)<br><span style="font-size:28px; color:#a3b1c6;">預估當地花費（每人）：約 670,000 MNT（約 6,030 TWD）</span></span>
+            <ul>
+                <li>Transportation: Total 2,300,000 MNT (~20,700 TWD / ~4,140 TWD/person)<br><span style="color:#a3b1c6; font-size:24px;">交通：總計 2,300,000 MNT（約 20,700 TWD / 每人約 4,140 TWD）</span></li>
+                <div class="sub-text">Covers 4 days of driving fees and fuel. Sourced using family cars to keep costs below market rates.<br><span style="color:#a3b1c6; font-size:24px;">包含 4 天的車資與油錢。使用家庭用車以確保價格低於市場行情。</span></div>
+                
+                <li>Accommodation & Activities (Mini Gobi):<br><span style="color:#a3b1c6; font-size:24px;">住宿與活動（小戈壁）：</span></li>
+                <div class="sub-text">
+                    - 2 Yurts (4 beds each) at 100,000 MNT = 200,000 MNT total (~1,800 TWD).<br><span style="color:#a3b1c6; font-size:24px;">- 2 頂蒙古包（各 4 床），每頂 10萬 MNT = 總計 200,000 MNT（約 1,800 TWD）。</span><br>
+                    - Camel & Horse riding: 50,000 MNT (~450 TWD).<br><span style="color:#a3b1c6; font-size:24px;">- 騎駱駝與騎馬：50,000 MNT（約 450 TWD）。</span><br>
+                    - Food: 50,000 MNT (~450 TWD).<br><span style="color:#a3b1c6; font-size:24px;">- 飲食：50,000 MNT（約 450 TWD）。</span><br>
+                    - Authentic Airag (Kumis) drink: 30,000 MNT (~270 TWD).<br><span style="color:#a3b1c6; font-size:24px;">- 馬奶酒：30,000 MNT（約 270 TWD）。</span>
+                </div>
+                
+                <li>Chinese Interpreter: 200,000 MNT / day (~1,800 TWD).<br><span style="color:#a3b1c6; font-size:24px;">中文翻譯：每天 200,000 MNT（約 1,800 TWD）。</span></li>
+                
+                <li style="color: #f78166;">Not included in this estimate:<br><span style="color:#a3b1c6; font-size:24px;">此預算不包含以下項目：</span></li>
+                <div class="sub-text">
+                    - Flights, visa, and the Holiday Inn in Ulaanbaatar.<br><span style="color:#a3b1c6; font-size:24px;">- 機票、簽證以及烏蘭巴托的 Holiday Inn 住宿。</span><br>
+                    - Drone rental cost (Estimated at 500,000 - 1,500,000 MNT / ~4,500 - 13,500 TWD).<br><span style="color:#a3b1c6; font-size:24px;">- 無人機租借費用（預估 50萬 - 150萬 MNT / 約 4,500 - 13,500 TWD）。</span><br>
+                    <strong style="color: var(--secondary); display:block; margin-top:20px;">*Payment Note: Please bring USD to exchange locally for all local driving and yurt costs.*<br><span style="font-size:24px; color:#a3b1c6;">*付款注意事項：請攜帶美金至當地兌換，以支付當地車資與蒙古包費用。*</span></strong>
+                </div>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Slide 3: Day 1 Schedule -->
+    <div class="slide">
+        <h2 class="section-title">Day 1: Arrival</h2>
+        <div class="layout-schedule">
+            <div class="left-col">
+                <div class="day-box">
+                    Sep 14 (Mon)
+                </div>
+                <div class="list-box">
+                    <ul>
+                        <li>23:10: Arrive at Ulaanbaatar (UBN) airport.</li>
+                        <li>Airport pickup and transfer to the city.</li>
+                        <li>Late night: Check into Holiday Inn Ulaanbaatar.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="map-box" style="padding:0; overflow:hidden;">
+                <iframe src="https://www.google.com/maps/d/embed?mid=1Wv4zJKaUeLQ-6_u4XrkwO2eSQiraf3M&hl=en" width="100%" height="100%" style="border:none; border-radius:24px;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Day 2 Schedule -->
+    <div class="slide">
+        <h2 class="section-title">Day 2: School & Orphanage</h2>
+        <div class="layout-schedule">
+            <div class="left-col">
+                <div class="day-box">
+                    Sep 15 (Tue)
+                </div>
+                <div class="list-box">
+                    <ul>
+                        <li style="font-size:24px; margin-bottom:15px;">09:00: Breakfast at the hotel.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive to 69th School: 5.2 km (~10 mins)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">10:00: Visit 69th School. Group photo with 4,000 students.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive to Orphanage: 1.6 km (~5 mins)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">14:00: Arrive at the orphanage (21 children).</li>
+                        <li style="font-size:24px; margin-bottom:15px;">18:00: Cook and serve dinner for the kids.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive back to Hotel: 5.7 km (~10 mins)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">21:00: Local bar/lounge in Ulaanbaatar for drinks.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="map-box" style="padding:0; overflow:hidden;">
+                <iframe src="https://www.google.com/maps/d/embed?mid=1Wv4zJKaUeLQ-6_u4XrkwO2eSQiraf3M&hl=en" width="100%" height="100%" style="border:none; border-radius:24px;"></iframe>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 5: Day 3 Schedule -->
+    <div class="slide">
+        <h2 class="section-title">Day 3: Charity Work & Travel</h2>
+        <div class="layout-schedule">
+            <div class="left-col">
+                <div class="day-box">
+                    Sep 16 (Wed)
+                </div>
+                <div class="list-box" style="padding: 30px;">
+                    <ul>
+                        <li style="font-size:24px; margin-bottom:15px;">09:00: Breakfast at the hotel.</li>
+                        <li style="font-size:24px; margin-bottom:15px;">10:00: Home visits to 3 impoverished families.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Walk/Drive to BITES: 0.6 km (~2 mins)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">13:00: Brunch at BITES.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive to Elsen Tasarkhai: 279 km (~4 hours)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">14:00: Drive to Elsen Tasarkhai (Mini Gobi). Approximately a 4-hour drive.</li>
+                        <li style="font-size:24px; margin-bottom:15px;">Evening: Check into Elsen Tasarkhai Yurt Camp.</li>
+                        <li style="font-size:24px; margin-bottom:15px;">Dinner: Khorkhog (authentic Mongolian BBQ).</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- Direct high-quality local image -->
+            <div class="map-box" style="background-image: url('dunes_real.jpg');"></div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Elsen Tasarkhai Gallery -->
+    <div class="slide">
+        <h2 class="section-title">Major Destination Feature</h2>
+        <div class="layout-gallery">
+            <div class="place-name" style="font-size: 50px;">
+                📍 Elsen Tasarkhai-Ger Camp (Элсэн тасархай-Гэр кэмп)
+            </div>
+            <!-- Authentic local images -->
+            <div class="pictures-row">
+                <div class="pic" style="background-image: url('dunes_real.jpg');"></div>
+                <div class="pic" style="background-image: url('yurt_real.jpg');"></div>
+                <div class="pic" style="background-image: url('camels_real.jpg');"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Day 4 & 5 Schedule -->
+    <div class="slide">
+        <h2 class="section-title">Day 4 & 5: Farewell & Departure</h2>
+        <div class="layout-schedule">
+            <div class="left-col">
+                <div class="day-box">
+                    Sep 17 (Thu) - Sep 18 (Fri)
+                </div>
+                <div class="list-box">
+                    <ul>
+                        <li>Sep 17, Morning: Nature tour and riding Bactrian camels.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive back to Ulaanbaatar: 279 km (~4 hours)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">Sep 17, Afternoon: Drive back to Ulaanbaatar.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive to Blue Sky Tower: 2.4 km (~5 mins)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">Sep 17, Evening: Farewell dinner and drinks at the Blue Sky Tower top floor lounge.</li>
+                        <li style="font-size:24px; margin-bottom:15px; color: #a3b1c6; font-style: italic; list-style-type: none;">🚗 Drive to UBN Airport: 48.8 km (~50 mins)</li>
+                        <li style="font-size:24px; margin-bottom:15px;">Sep 17, Late Night: Drive back to the airport.</li>
+                        <li style="font-size:24px; margin-bottom:15px;">Sep 18, 06:20: Flight departs.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="map-box" style="background-image: url('blue_sky.jpg');"></div>
+        </div>
+    </div>
+    
+    <!-- Slide 8: Answered Logistics -->
+    <div class="slide" style="padding: 60px;">
+        <h2 class="section-title" style="margin-bottom: 20px;">Resolved Logistics & Answers<br><span style="font-size:32px; color:#a3b1c6;">已解決的後勤與回覆</span></h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <!-- Column 1 -->
+            <div class="card" style="padding: 20px;">
+                <span class="highlight" style="font-size:24px; margin-bottom:10px;">1. Transportation (Large Vehicle) / 交通安排</span>
+                <div class="sub-text" style="font-size:20px; margin-left:0;"><strong>Status: Done.</strong> We will use a Toyota Vanguard (large SUV) for the group + a 2nd car just for baggage. The group will NOT be separated.<br><span style="color:#a3b1c6;">狀態：已確認。我們將使用一輛 Toyota Vanguard（大型 SUV）載人，外加第二輛車專門載行李。團隊不會被分開。</span></div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <span class="highlight" style="font-size:24px; margin-bottom:10px;">2. Sumo Wrestling Practice / 相撲練習</span>
+                <div class="sub-text" style="font-size:20px; margin-left:0;"><strong>Status: Not possible.</strong> Unfortunately, it is not possible to add this to the itinerary.<br><span style="color:#a3b1c6;">狀態：不可行。很遺憾，無法將此行程加入目前的行程表中。</span></div>
+            </div>
+            
+            <!-- Column 2 -->
+            <div class="card" style="padding: 20px;">
+                <span class="highlight" style="font-size:24px; margin-bottom:10px;">3. Drone Rental / 無人機租借</span>
+                <div class="sub-text" style="font-size:20px; margin-left:0;"><strong>Status: Quoted.</strong> The local drone rental cost in Mongolia varies between 500,000 to 1,500,000 MNT (~4,500 - 13,500 TWD).<br><span style="color:#a3b1c6;">狀態：已報價。蒙古當地的無人機租借費用約為 50萬 至 150萬 MNT（約 4,500 - 13,500 TWD）。</span></div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <span class="highlight" style="font-size:24px; margin-bottom:10px;">4. Interpreter Cost / 翻譯費用</span>
+                <div class="sub-text" style="font-size:20px; margin-left:0;"><strong>Status: Quoted.</strong> The cost of Chinese interpretation services is 200,000 MNT (~1,800 TWD).<br><span style="color:#a3b1c6;">狀態：已報價。中文翻譯服務的費用為 200,000 MNT（約 1,800 TWD）。</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: To Discuss -->
+    <div class="slide" style="padding: 60px;">
+        <h2 class="section-title" style="margin-bottom: 20px;">To Discuss (July 2nd)<br><span style="font-size:32px; color:#a3b1c6;">待討論事項 (7月2日)</span></h2>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 30px;">
+            <div class="card" style="padding: 20px;">
+                <span class="highlight" style="font-size:24px; margin-bottom:10px;">1. 69th School Donation / 第69中學捐贈</span>
+                <div class="sub-text" style="font-size:20px; margin-left:0;"><strong>Status: Open.</strong> The principal requested 7 horsehead fiddles (45,000 NTD). We need to discuss if we are doing this or a different donation, and coordinate the <strong>4,000 student photo</strong>.<br><span style="color:#a3b1c6;">狀態：待討論。校長要求捐贈 7 把馬頭琴（約 45,000 TWD）。我們需要討論是否接受此要求或提供其他捐贈，並協調 4,000 名學生的大合照。</span></div>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <span class="highlight" style="font-size:24px; margin-bottom:10px;">2. Orphanage Details / 孤兒院細節</span>
+                <div class="sub-text" style="font-size:20px; margin-left:0;"><strong>Status: Open.</strong> There are 21 children (ages 12-18). We need to discuss if they need shoes donated, and decide on the dinner menu (e.g., braised pork rice).<br><span style="color:#a3b1c6;">狀態：待討論。共有 21 名兒童（12-18歲）。我們需要討論是否需要捐贈鞋子，並決定晚餐菜單（例如：滷肉飯）。</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // No scripts needed, maps are embedded via iframe
+    </script>
+</body>
+</html>
